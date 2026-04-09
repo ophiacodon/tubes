@@ -11,7 +11,7 @@
 					"--bin=tubes"
 				]
 			},
-			"args": []
+			"args": ["data/859"]
 		},
 		{
 			"name": "Unit Test",

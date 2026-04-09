@@ -7,7 +7,9 @@ use tube::Tube;
 use node::Node;
 
 fn main() -> Result<(), Box<dyn error::Error>> {
-	let tubes = init_tubes()?;
+	let args: Vec<String> = std::env::args().collect();
+	let data_file = if args.len() > 1 { &args[1] } else { "color_data" };
+	let tubes = init_tubes(data_file)?;
 	for tube in &tubes {
 		tube.print();
 	}
@@ -16,9 +18,9 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 	loop {
 		if node.goaled() {
 			print_history(&node);
-			break
+			break;
 		}
-		if let Some(child_node) = node.next_child() {
+		else if let Some(child_node) = node.next_child() {
 			node = child_node;
 		}
 		else {
@@ -26,6 +28,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 				node = parent;
 			}
 			else {
+				println!("failed");
 				break
 			}
 		}
@@ -35,20 +38,21 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 }
 
 fn print_history(node : &Rc<Node>) {
-	for (src_idx, dst_idx) in &node.history() {
-		println!("{}, {}", src_idx, dst_idx);
+	println!(">>>");
+	for (i, (src_idx, dst_idx)) in node.history().iter().enumerate() {
+		println!("{}, {}, {}", i + 1, src_idx, dst_idx);
 	}
+	println!("<<<");
 }
 
-const DATA_FILE: &str = "color_data";
+fn init_tubes(data_file: &str) -> Result<Vec<Tube>, String> {
 
-fn generate_error(line_number : usize, line : &str) -> String {
-	format!("invalid format on line {line_number} of '{DATA_FILE}' : {line}")
-}
+	let generate_error = |line_number : usize, line : &str| -> String {
+		format!("invalid format on line {line_number} of '{data_file}' : {line}")
+	};
 
-fn init_tubes() -> Result<Vec<Tube>, String> {
-	let content = fs::read_to_string(DATA_FILE)
-		.map_err(|e| format!("failed to open '{DATA_FILE}' : {}", e))?;
+	let content = fs::read_to_string(data_file)
+		.map_err(|e| format!("failed to open '{data_file}' : {}", e))?;
 
 	let mut tubes: Vec<Tube> = Vec::new();
 	let mut is_first = true;
@@ -70,7 +74,7 @@ fn init_tubes() -> Result<Vec<Tube>, String> {
 		let mut tube = Tube::new();
 		for c in line.bytes() {
 			if c == b'-' {break}
-			if ! c.is_ascii_lowercase() || c > b'k' {
+			if ! c.is_ascii_lowercase() {
 				return Err(generate_error(i+1, line));
 			}
 			tube.push(c, 1);

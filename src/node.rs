@@ -54,7 +54,7 @@ impl Node {
 			}
 			self.next_child_indices.set((i, j));
 		};
-		let process = |i: usize, tube_src: &Tube, src_fixed: bool| -> Option<Rc<Self>> {
+		let process = |i: usize, tube_src: &Tube| -> Option<Rc<Self>> {
 			let (color, upper_cnt) = tube_src.upper_info();
 			if upper_cnt == 0 || upper_cnt == Tube::max_cnt() {return None;}
 			for (j, tube_dst) in self.tubes.iter().enumerate().skip(nj) {
@@ -72,7 +72,7 @@ impl Node {
 				if dst_remain_cnt >= upper_cnt {
 					child_tubes[i].pop(upper_cnt);
 					child_tubes[j].push(color, upper_cnt);
-					return Some(self.new_child(child_tubes, i, j, src_fixed));
+					return Some(self.new_child(child_tubes, i, j, false));
 				}
 				child_tubes[i].pop(dst_remain_cnt);
 				child_tubes[j].push(color, dst_remain_cnt);
@@ -82,11 +82,16 @@ impl Node {
 		};
 
 		if let NodeKind::Child {src_fixed:true, src_idx, ..} = &self.kind {
-			process(*src_idx, &self.tubes[*src_idx], true)
+			if ni != *src_idx {
+				None
+			}
+			else {
+				process(*src_idx, &self.tubes[*src_idx])
+			}
 		}
 		else {
 			for (i, tube_src) in self.tubes.iter().enumerate().skip(ni) {
-				if let Some(child) = process(i, tube_src, false) {
+				if let Some(child) = process(i, tube_src) {
 					return Some(child);
 				}
 			}
@@ -101,14 +106,14 @@ impl Node {
 		}
 		true
 	}
-	pub fn history(self: &Rc<Self>) -> VecDeque<(&usize,&usize)> {
+	pub fn history(self: &Rc<Self>) -> VecDeque<(u8,u8)> {
 		let mut deq = VecDeque::new();
 		let mut node = self;
 		loop {
 			match &node.kind {
 				NodeKind::Root => break,
 				NodeKind::Child { parent, src_idx, dst_idx, .. } => {
-					deq.push_front((src_idx, dst_idx));
+					deq.push_front((*src_idx as u8, *dst_idx as u8));
 					node = parent;
 				}
 			}

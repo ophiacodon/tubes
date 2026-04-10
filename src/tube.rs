@@ -4,12 +4,16 @@ static MAX_CNT: OnceLock<usize> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct Tube {
+	id: usize,
 	stack: Vec<u8>,
 }
 
 impl Tube {
-	pub fn new() -> Self {
-		Self { stack: Vec::new() }
+	pub fn new(id: usize) -> Self {
+		Self {
+			id: id,
+			stack: Vec::with_capacity(Self::max_cnt())
+		}
 	}
 	pub fn init_max_cnt(n: usize) {
 		MAX_CNT.set(n).expect("already initialized")
@@ -20,8 +24,29 @@ impl Tube {
 	pub fn remain_cnt(&self) -> usize {
 		Self::max_cnt() - self.stack.len()
 	}
+	pub fn is_empty(&self) -> bool {
+		self.stack.len() == 0
+	}
+	pub fn is_pure(&self) -> bool {
+		if self.stack.len() > 0 {
+			let last_color = self.stack.last().unwrap();
+			for color in &self.stack {
+				if color != last_color {
+					return false;
+				}
+			}
+		}
+		true
+	}
+	pub fn height(&self) ->usize {
+		self.stack.len()
+	}
+	pub fn is_complete(&self) -> bool {
+		self.upper_info().1 == Self::max_cnt()
+	}
 	pub fn push(&mut self, color: u8, cnt: usize) {
 		self.stack.resize(self.stack.len() + cnt, color);
+		debug_assert!(self.stack.len() <= Self::max_cnt());
 	}
 	pub fn pop(&mut self, cnt: usize) {
 		debug_assert!(self.stack.len() >= cnt);
@@ -40,7 +65,10 @@ impl Tube {
 			(0, 0)
 		}
 	}
+	pub fn get_stack(&self) ->&Vec<u8> {
+		&self.stack
+	}
 	pub fn print(&self) {
-		println!("{}", std::str::from_utf8(&self.stack).unwrap());
+		println!("{:>2}: {}", self.id, std::str::from_utf8(&self.stack).unwrap());
 	}
 }

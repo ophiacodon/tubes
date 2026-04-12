@@ -57,11 +57,11 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 				if let Some(&(depth, goaled)) = seen.get(&hash) {
 					if goaled {
 						seen.insert(node.get_hash(), (node.depth, true));
-					}
-					if goaled && child_node.depth < depth {
-						node = child_node;
-						seen.insert(hash, (node.depth, goaled));
-						break
+						if child_node.depth < depth {
+							node = child_node;
+							seen.insert(hash, (node.depth, goaled));
+							break
+						}
 					}
 					continue
 				}

@@ -19,39 +19,68 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
 	let mut seen: HashMap<u64,usize> = HashMap::new();
 	let mut node = Node::new_root(tubes);
-	let mut goal_depth = usize::MAX;
-	let mut goal_node: Option<Rc<Node>> = None;
-	loop {
+	let mut goal_nodes: HashMap<(usize, usize), Rc<Node>> = HashMap::new();
+	let mut min_goal_depth = usize::MAX;
+	'main: loop {
 		if node.goaled() {
-			goal_node = Some(node.clone());
-			// node.history();
-			goal_depth = node.depth;
+			let first = node.get_first_indices();
+			goal_nodes.insert(*first, node.clone());
+			min_goal_depth = min_goal_depth.min(node.depth);
+			node.history();
 			if let Some(parent) = node.parent() {
-				node = parent;
+				node = parent.parent().unwrap();
 			}
 		}
 		else {
-			if node.depth >= goal_depth- 1 {
-				if let Some(parent) = node.parent() {
-					node = parent;
+			// let first = node.get_first_indices();
+			// if let Some(goal_node) = goal_nodes.get(first) {
+			// 	if goal_node.depth <= node.depth + 1 {
+			// 		node = node.parent().unwrap();
+			// 	}
+			// }
+			// else {
+			// 	if min_goal_depth <= node.depth {
+			// 		node = node.parent().unwrap();
+			// 	}
+			// }
+
+			if min_goal_depth <= node.depth {
+				node = node.parent().unwrap();
+			}
+		}
+		loop {
+			if let Some(child_node) = node.next_child() {
+				let hash = child_node.get_hash();
+				if hash == 0xeeb144b0b3d01e87 {
+					// println!("!");
 				}
-			}
-			else if let Some(child_node) = node.next_child(&mut seen) {
-				node = child_node;
-			}
-			else {
-				if let Some(parent) = node.parent() {
-					node = parent;
+				if let Some(&depth) = seen.get(&hash) {
+					if depth > child_node.depth {
+						node = child_node;
+						seen.insert(hash, node.depth);
+						break
+					}
 				}
 				else {
-					if let Some(node_rc) = &goal_node {
-						node_rc.history();
-					}
-					else {
-						println!("not found");
-					}
+					node = child_node;
+					seen.insert(hash, node.depth);
 					break
 				}
+			}
+			if let Some(parent) = node.parent() {
+				node = parent;
+			}
+			else {
+				if goal_nodes.len() == 0 {
+					println!("not found");
+				}
+				else {
+					for (_, node) in &goal_nodes {
+						if node.depth != min_goal_depth {continue}
+						node.history();
+					}
+				}
+				break 'main;
 			}
 		}
 	}

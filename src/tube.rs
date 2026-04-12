@@ -4,7 +4,7 @@ static MAX_CNT: OnceLock<usize> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct Tube {
-	id: usize,
+	pub id: usize,
 	stack: Vec<u8>,
 }
 
@@ -35,8 +35,11 @@ impl Tube {
 					return false;
 				}
 			}
+			true
 		}
-		true
+		else {
+			false
+		}
 	}
 	pub fn height(&self) ->usize {
 		self.stack.len()
@@ -52,8 +55,9 @@ impl Tube {
 		debug_assert!(self.stack.len() >= cnt);
 		self.stack.truncate(self.stack.len() - cnt);
 	}
-	pub fn upper_color(&self) -> Option<&u8> {
-		self.stack.last()
+	pub fn upper_color(&self) -> u8 {
+		if let Some(&color) = self.stack.last() {return color;}
+		0
 	}
 	pub fn upper_info(&self) -> (u8, usize) {
 		if self.stack.len() > 0 {

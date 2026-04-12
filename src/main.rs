@@ -16,19 +16,22 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 	for (_, tube) in &tubes {
 		tube.print();
 	}
-
-	let mut seen: HashMap<u64,usize> = HashMap::new();
+	
+	let mut seen: HashMap<u64,(usize, bool)> = HashMap::new();
 	let mut node = Node::new_root(tubes);
 	let mut goal_nodes: HashMap<(usize, usize), Rc<Node>> = HashMap::new();
 	let mut min_goal_depth = usize::MAX;
 	'main: loop {
 		if node.goaled() {
-			let first = node.get_first_indices();
-			goal_nodes.insert(*first, node.clone());
+			let &first = node.get_first_indices();
+			goal_nodes.insert(first, node.clone());
+			seen.insert(node.get_hash(), (node.depth, true));
 			min_goal_depth = min_goal_depth.min(node.depth);
 			node.history();
 			if let Some(parent) = node.parent() {
 				node = parent.parent().unwrap();
+				*seen.get_mut(&parent.get_hash()).unwrap() = (parent.depth, true);
+				*seen.get_mut(&node.get_hash()).unwrap() = (node.depth, true);
 			}
 		}
 		else {
@@ -44,30 +47,36 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 			// 	}
 			// }
 
-			if min_goal_depth <= node.depth {
-				node = node.parent().unwrap();
-			}
+			// if min_goal_depth <= node.depth {
+			// 	node = node.parent().unwrap();
+			// }
 		}
 		loop {
 			if let Some(child_node) = node.next_child() {
 				let hash = child_node.get_hash();
-				if hash == 0xeeb144b0b3d01e87 {
-					// println!("!");
-				}
-				if let Some(&depth) = seen.get(&hash) {
-					if depth > child_node.depth {
+				if let Some(&(depth, goaled)) = seen.get(&hash) {
+					if goaled {
+						seen.insert(node.get_hash(), (node.depth, true));
+					}
+					if goaled && child_node.depth < depth {
 						node = child_node;
-						seen.insert(hash, node.depth);
+						seen.insert(hash, (node.depth, goaled));
 						break
 					}
+					continue
 				}
 				else {
 					node = child_node;
-					seen.insert(hash, node.depth);
+					seen.insert(hash, (node.depth, false));
 					break
 				}
 			}
 			if let Some(parent) = node.parent() {
+				if let Some(&(_depth, true)) = seen.get(&node.get_hash()) {
+					if let Some((_depth, goaled)) = seen.get_mut(&parent.get_hash()) {
+						*goaled = true;
+					}
+				}
 				node = parent;
 			}
 			else {

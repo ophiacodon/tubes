@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use crate::tube::Tube;
 use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::vec::Vec;
@@ -13,7 +14,7 @@ pub enum NodeKind {
 		src_idx: usize,
 		dst_idx: usize,
 		src_fixed: bool,
-		root_indices: (usize, usize)
+		root_indices: (usize, usize),
 	}
 }
 pub struct Node {
@@ -115,11 +116,13 @@ impl Node {
 	}
 	fn process (self: &Rc<Self>, src_idx: usize, initial_dst_idx: usize, tube_src: &Tube) -> Option<Rc<Self>> {
 		let (color, upper_cnt) = tube_src.upper_info();
+		let src_pure = tube_src.is_pure();
 		if color == 0 {return None;}
 		for (&dst_idx, tube_dst) in self.tubes.range((Included(initial_dst_idx), Unbounded)) {
 			if src_idx == dst_idx {continue}
 			let dst_remain_cnt = tube_dst.remain_cnt();
 			if dst_remain_cnt == 0 {continue}
+			if src_pure && tube_dst.is_empty() {continue}
 			let dst_color = tube_dst.upper_color();
 			if dst_color != 0 && dst_color != color {continue}
 			let mut child_tubes = self.tubes.clone();
@@ -138,8 +141,8 @@ impl Node {
 	pub fn next_child(self: &Rc<Self>) -> Option<Rc<Node>> {
 		let (ni, nj) = self.next_child_indices.get();
 
-		if let NodeKind::Child {src_fixed:true, src_idx, ..} = &self.kind {
-			if ni != *src_idx {
+		if let NodeKind::Child {src_fixed: true, src_idx, ..} = &self.kind {
+			if *src_idx < ni {
 				None
 			}
 			else {
@@ -193,7 +196,8 @@ impl Node {
 			match &node.kind {
 				NodeKind::Root => break,
 				NodeKind::Child { parent, src_idx, dst_idx, .. } => {
-					println!("{:>2}: {:>2}->{:>2} {:016x}", node.depth, src_idx, dst_idx, node.get_hash());
+					let hash = node.get_hash();
+					println!("{:>2}: {:>2}->{:>2} {:#016x}", node.depth, src_idx, dst_idx, hash);
 					node = parent;
 				}
 			}
